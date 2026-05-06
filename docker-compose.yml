@@ -1,0 +1,287 @@
+# ============================================================
+# Credit Scoring System - Docker Swarm Stack
+# Deploy: docker stack deploy -c docker-compose.yml credit_scoring
+# ============================================================
+version: "3.9"
+
+# -------------------------------------------------------
+# NETWORKS
+# -------------------------------------------------------
+networks:
+  credit_net:
+    driver: overlay
+    attachable: true
+  airflow_net:
+    driver: overlay
+    attachable: true
+
+# -------------------------------------------------------
+# VOLUMES
+# -------------------------------------------------------
+volumes:
+  postgres_data:
+  postgres_airflow_data:
+  mlflow_artifacts:
+  airflow_logs:
+  model_artifacts:
+
+# -------------------------------------------------------
+# SERVICES
+# -------------------------------------------------------
+services:
+
+  # --------------------------------------------------
+  # PostgreSQL - Credit Scoring DB
+  # --------------------------------------------------
+  postgres_db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-credit_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-credit_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-credit_scoring_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - credit_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-credit_user} -d ${POSTGRES_DB:-credit_scoring_db}"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.role == manager
+
+  # --------------------------------------------------
+  # PostgreSQL - Airflow DB
+  # --------------------------------------------------
+  postgres_airflow:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_airflow_data:/var/lib/postgresql/data
+    networks:
+      - airflow_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  # --------------------------------------------------
+  # Redis (Airflow Celery broker)
+  # --------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    networks:
+      - airflow_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  # --------------------------------------------------
+  # MLflow Tracking Server (psycopg2-val kiegészítve)
+  # --------------------------------------------------
+  mlflow:
+    image: credit_scoring_mlflow:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5102
+      --backend-store-uri postgresql+psycopg2://credit_user:${POSTGRES_PASSWORD:-credit_pass}@postgres_db:5432/mlflow_db
+      --default-artifact-root /mlflow/artifacts
+    ports:
+      - "5102:5102"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    networks:
+      - credit_net
+    depends_on:
+      - postgres_db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5102/health"]
+      interval: 30s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: ${REPLICAS_MLFLOW:-1}
+      restart_policy:
+        condition: on-failure
+
+  # --------------------------------------------------
+  # Credit Scoring API
+  # --------------------------------------------------
+  api:
+    image: credit_scoring_api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-credit_user}:${POSTGRES_PASSWORD:-credit_pass}@postgres_db:5432/${POSTGRES_DB:-credit_scoring_db}
+      MLFLOW_TRACKING_URI: http://mlflow:5102
+      SECRET_KEY: ${SECRET_KEY:-change_me_in_production}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin1234!}
+      AIRFLOW_BASE_URL: http://airflow_webserver:8080
+      AIRFLOW_USER: ${AIRFLOW_USER:-airflow}
+      AIRFLOW_PASSWORD: ${AIRFLOW_PASSWORD:-airflow}
+    ports:
+      - "8080:8080"
+    volumes:
+      - model_artifacts:/app/artifacts
+      - ./data:/app/data:ro
+    networks:
+      - credit_net
+      - airflow_net
+    depends_on:
+      - postgres_db
+      - mlflow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      retries: 5
+      start_period: 60s
+    deploy:
+      replicas: ${REPLICAS_API:-2}
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+
+  # --------------------------------------------------
+  # Airflow - Common config
+  # --------------------------------------------------
+  airflow_init:
+    image: apache/airflow:2.9.3
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
+      _PIP_ADDITIONAL_REQUIREMENTS: "requests>=2.31.0 mlflow>=2.10.0"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - ./data:/opt/airflow/data:ro
+    networks:
+      - airflow_net
+      - credit_net
+    entrypoint: /bin/bash
+    command: -c "airflow db migrate && airflow users create --username $${_AIRFLOW_WWW_USER_USERNAME:-airflow} --firstname Air --lastname Flow --role Admin --email admin@credit.local --password $${_AIRFLOW_WWW_USER_PASSWORD:-airflow} || true"
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  airflow_scheduler:
+    image: apache/airflow:2.9.3
+    command: scheduler
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      _PIP_ADDITIONAL_REQUIREMENTS: "requests>=2.31.0 mlflow>=2.10.0"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - ./data:/opt/airflow/data:ro
+    networks:
+      - airflow_net
+      - credit_net
+    depends_on:
+      - postgres_airflow
+      - redis
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  airflow_webserver:
+    image: apache/airflow:2.9.3
+    command: webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+      _PIP_ADDITIONAL_REQUIREMENTS: "requests>=2.31.0 mlflow>=2.10.0"
+    ports:
+      - "8793:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+    networks:
+      - airflow_net
+      - credit_net
+    depends_on:
+      - postgres_airflow
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  airflow_worker:
+    image: apache/airflow:2.9.3
+    command: celery worker
+    environment:
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres_airflow:5432/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ""
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      DUMB_INIT_SETSID: "0"
+      _PIP_ADDITIONAL_REQUIREMENTS: "requests>=2.31.0 mlflow>=2.10.0"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - ./data:/opt/airflow/data:ro
+    networks:
+      - airflow_net
+      - credit_net
+    depends_on:
+      - postgres_airflow
+      - redis
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure

@@ -1,0 +1,414 @@
+{% extends "admin/base.html" %}
+{% block title %}Új ügyfél felvitele - Credit Scoring Admin{% endblock %}
+{% block page_title %}<i class="bi bi-person-plus me-2"></i>Új ügyfél felvitele{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card shadow-sm">
+      <div class="card-header bg-primary text-white d-flex align-items-center gap-2">
+        <i class="bi bi-person-badge fs-5"></i>
+        <strong>Ügyfél adatai — 25 pénzügyi jellemző</strong>
+      </div>
+      <form method="POST" action="{{ url_for('admin.create_customer') }}">
+        <div class="card-body">
+          <div class="row g-3">
+
+            <!-- ═══ 1. CÉGAZONOSÍTÁS ═══ -->
+            <div class="col-12">
+              <h6 class="text-primary border-bottom border-primary pb-1 mb-0">
+                <i class="bi bi-building me-1"></i>1. Cégazonosítás és szervezeti adatok
+              </h6>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Cégnév <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required placeholder="pl. Teszt Kereskedelmi Kft.">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Kapcsolattartó e-mail</label>
+              <input type="email" name="email" class="form-control" placeholder="info@ceg.hu">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Iparág / Szektor
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A modell iparág-specifikus kockázati jellemzőket vesz figyelembe. Pl. az építőipar magasabb ciklikusságot jelent, mint a szolgáltatási szektor."></i>
+              </label>
+              <select name="industry_code" class="form-select">
+                <option value="">— kérjük válasszon —</option>
+                <option>Építőipar</option>
+                <option>Kereskedelem</option>
+                <option>Feldolgozóipar</option>
+                <option>Mezőgazdaság</option>
+                <option>Szolgáltatás</option>
+                <option>Informatika</option>
+                <option>Pénzügy</option>
+                <option>Egészségügy</option>
+                <option>Ingatlan</option>
+                <option>Egyéb</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Gazdálkodási / jogi forma
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A jogi forma befolyásolja a felelősségi korlátokat és a hitelkockázatot. Kft. és Zrt. esetén korlátolt felelősség érvényesül."></i>
+              </label>
+              <select name="legal_entity_type" class="form-select">
+                <option value="">— kérjük válasszon —</option>
+                <option>Kft.</option>
+                <option>Zrt.</option>
+                <option>Bt.</option>
+                <option>Nyrt.</option>
+                <option>Egyéni vállalkozó</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Ügyfélszegmens
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A vállalkozás méretkategóriája: Micro (10 fő alatt), SME (kis-közepes vállalat), Corporate (nagyvállalat). A szegmens befolyásolja a kockázatértékelési logikát."></i>
+              </label>
+              <select name="client_segment" class="form-select">
+                <option value="">— kérjük válasszon —</option>
+                <option value="Micro">Mikrovállalkozás (Micro)</option>
+                <option value="SME">Kis- és középvállalat (SME)</option>
+                <option value="Corporate">Nagyvállalat (Corporate)</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Székhely megye
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A cég székhelyének megyéje. Regionális gazdasági különbségek befolyásolhatják a visszafizetési képességet."></i>
+              </label>
+              <select name="address_county" class="form-select">
+                <option value="">— kérjük válasszon —</option>
+                <option>Budapest</option><option>Pest</option><option>Fejér</option>
+                <option>Komárom-Esztergom</option><option>Veszprém</option><option>Győr-Moson-Sopron</option>
+                <option>Vas</option><option>Zala</option><option>Baranya</option>
+                <option>Somogy</option><option>Tolna</option><option>Heves</option>
+                <option>Nógrád</option><option>Borsod-Abaúj-Zemplén</option><option>Hajdú-Bihar</option>
+                <option>Jász-Nagykun-Szolnok</option><option>Szabolcs-Szatmár-Bereg</option>
+                <option>Bács-Kiskun</option><option>Csongrád-Csanád</option><option>Békés</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Vállalkozás kora (év)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Hány éve működik a vállalkozás. Régebbi cégek általában kisebb csőd kockázatot hordoznak – a start-upok kockázata magasabb."></i>
+              </label>
+              <input type="number" min="0" name="business_age" class="form-control" placeholder="pl. 8">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Alkalmazottak száma
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A vállalatnál foglalkoztatottak teljes létszáma (FTE). A méret fontos kontextus a pénzügyi adatok értelmezéséhez."></i>
+              </label>
+              <input type="number" min="0" name="num_employees" class="form-control" placeholder="pl. 45">
+            </div>
+
+            <!-- ═══ 2. MÉRLEG ADATOK ═══ -->
+            <div class="col-12 mt-3">
+              <h6 class="text-primary border-bottom border-primary pb-1 mb-0">
+                <i class="bi bi-table me-1"></i>2. Mérleg adatok
+                <small class="text-muted fw-normal ms-2">(utolsó lezárt üzleti év, Ft-ban)</small>
+              </h6>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Összes eszköz (Total Assets)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Mérleg eszközoldal főösszege: forgóeszközök + befektetett eszközök összesen."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="total_assets" class="form-control" placeholder="pl. 120 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Összes kötelezettség (Total Liabilities)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A cég összes fennálló tartozása (rövid + hosszú lejáratú). Magas arány az eszközökhöz képest eladósodottságot jelez."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="total_liabs" class="form-control" placeholder="pl. 60 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Eredménytartalék (Retained Earnings)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A felhalmozott, ki nem fizetett nyereség összege. Negatív érték (accumulated deficit) súlyos pénzügyi problémát jelezhet."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="retained_earnings" class="form-control" placeholder="pl. 15 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Forgóeszközök (Current Assets)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Rövid távon likviddé tehető eszközök: pénzkészlet, követelések, készletek."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="current_assets" class="form-control" placeholder="pl. 30 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Rövid lej. kötelezettségek (Current Liabilities)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="12 hónapon belül esedékes kötelezettségek: szállítói tartozások, rövid lejáratú hitelek."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="current_liabs" class="form-control" placeholder="pl. 20 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Fedezet értéke (Collateral Value)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Az igényelt hitelhez felajánlott fedezet (ingatlan, gép, készlet) becsült piaci értéke. Magasabb fedezet csökkenti a hitelkockázatot."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="collateral_value" class="form-control" placeholder="pl. 80 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Nettó árbevétel (Net Sales)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Az értékesítés nettó árbevétele (ÁFA nélkül). A vállalat méretének és piaci jelenlétének egyik legfontosabb mutatója."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" min="0" name="net_sales" class="form-control" placeholder="pl. 50 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <!-- ═══ 3. EREDMÉNYKIMUTATÁS ═══ -->
+            <div class="col-12 mt-3">
+              <h6 class="text-primary border-bottom border-primary pb-1 mb-0">
+                <i class="bi bi-graph-up-arrow me-1"></i>3. Eredménykimutatás
+                <small class="text-muted fw-normal ms-2">(utolsó lezárt üzleti év)</small>
+              </h6>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                EBIT (Kamat és adó előtti eredmény)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Earnings Before Interest and Taxes — az operatív nyereség, kamat- és adófizetés előtt. Megmutatja az alaptevékenység jövedelmezőségét."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="ebit" class="form-control" placeholder="pl. 8 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Bruttó marzs (Gross Margin, %)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="(Árbevétel − Közvetlen költségek) / Árbevétel × 100. Megmutatja, hogy az árbevétel mekkora hányada marad meg a közvetlen termelési költségek levonása után."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="gross_margin" class="form-control" placeholder="pl. 35.0">
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Éves árbevétel-növekedés (Annual Revenue Growth, %)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Az árbevétel változása az előző évhez képest százalékban. Pozitív érték növekedést, negatív visszaesést jelez."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="annual_revenue_growth" class="form-control" placeholder="pl. 7.2">
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+
+            <!-- ═══ 4. PÉNZÜGYI ARÁNYMUTATÓK ═══ -->
+            <div class="col-12 mt-3">
+              <h6 class="text-primary border-bottom border-primary pb-1 mb-0">
+                <i class="bi bi-bar-chart-line me-1"></i>4. Pénzügyi aránymutatók
+              </h6>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Operatív eredményhányad (Operating Margin, %)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="EBIT / Árbevétel × 100. Megmutatja, hogy az árbevétel hány százaléka marad meg az üzleti tevékenység után."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="operating_margin" class="form-control" placeholder="pl. 12.5">
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Eszközarányos megtérülés (ROA, %)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Return on Assets: Nettó eredmény / Összes eszköz × 100. Megmutatja, milyen hatékonyan hasznosítja a cég az eszközeit. 5% felett erős teljesítmény."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="return_on_assets" class="form-control" placeholder="pl. 5.4">
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Saját tőke megtérülése (ROE, %)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Return on Equity: Nettó eredmény / Saját tőke × 100. Megmutatja, hogy a tulajdonosok tőkéje milyen hozamot termel."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="return_on_equity" class="form-control" placeholder="pl. 15.2">
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Tőkeáttételi mutató (D/E Ratio)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Idegen tőke / Saját tőke. Megmutatja, mennyire támaszkodik a cég hitelekre. 3 felett fokozott eladósodottság."></i>
+              </label>
+              <input type="number" step="any" min="0" name="debt_to_equity" class="form-control" placeholder="pl. 2.1">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Likviditási ráta (Current Ratio)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Forgóeszközök / Rövid lej. kötelezettségek. 1 alatti érték likviditási problémát jelez. Ideális: 1.5–2.0."></i>
+              </label>
+              <input type="number" step="any" min="0" name="current_ratio" class="form-control" placeholder="pl. 1.5">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Gyorslikviditási mutató (Quick Ratio)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="(Forgóeszközök − Készletek) / Rövid lej. kötelezettségek. Szigorúbb likviditásmérő, mint a Current Ratio — a lassabban értékesíthető készleteket kizárja."></i>
+              </label>
+              <input type="number" step="any" min="0" name="quick_ratio" class="form-control" placeholder="pl. 1.2">
+            </div>
+
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">
+                Működési CF / Rövid köt. (Oper. CF Ratio)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Operating Cash Flow Ratio: Működési cash flow / Rövid lejáratú kötelezettségek. Megmutatja, hogy a rendes működés mennyi likvid pénzt termel a rövid lejáratú adósságokhoz képest."></i>
+              </label>
+              <input type="number" step="any" name="operating_cash_flow_ratio" class="form-control" placeholder="pl. 0.85">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Forgótőke (Working Capital, Ft)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Forgóeszközök − Rövid lejáratú kötelezettségek. Pozitív értéke azt jelzi, hogy a cég képes fedezni rövid távú tartozásait."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" name="working_capital" class="form-control" placeholder="pl. 10 000 000">
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Vevők átlagos fizetési ideje (DSO, nap)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Days Sales Outstanding: Vevőkövetelések / Árbevétel × 365. Megmutatja, átlagosan hány nap múlva folynak be a kiállított számlák. Magas DSO (>90 nap) likviditási kockázatot jelez."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" step="any" min="0" name="days_sales_outstanding" class="form-control" placeholder="pl. 45">
+                <span class="input-group-text">nap</span>
+              </div>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">
+                Késedelmes fizetések száma (12 hó)
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Az elmúlt 12 hónapban rögzített késedelmes számlafizetések száma. Az egyik legerősebb előrejelzője a hitelképtelenségnek."></i>
+              </label>
+              <input type="number" min="0" name="late_payment_count" class="form-control" value="0">
+            </div>
+
+            <!-- ═══ 5. SZÖVEGES ÉRTÉKELÉS ═══ -->
+            <div class="col-12 mt-3">
+              <h6 class="text-primary border-bottom border-primary pb-1 mb-0">
+                <i class="bi bi-chat-quote me-1"></i>5. Szöveges értékelés
+                <small class="text-muted fw-normal ms-2">(NLP-alapú hangulatelemzés)</small>
+              </h6>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-semibold">
+                Üzleti leírás / kockázati megjegyzés
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="A rendszer természetes nyelvfeldolgozással (NLP) elemzi a szöveget. Pozitív kulcsszavak (pl. 'stabil', 'növekedés') és negatív kulcsszavak (pl. 'kockázat', 'késedelem') alapján hangulati pontszámot számol, és figyeli a modell vs. szöveg közötti eltérést (elfogultsági riasztás)."></i>
+              </label>
+              <textarea name="description" class="form-control" rows="3"
+                placeholder="pl. A vállalat stabil növekedési pályán van, rendszeres fizetési fegyelemmel, erős piaci pozícióval..."></textarea>
+              <div class="form-text">
+                <i class="bi bi-lightbulb text-warning me-1"></i>
+                Ha a szöveg pozitív, de a modell nemfizetést jelez → <strong>elfogultsági riasztás</strong> aktiválódik.
+              </div>
+            </div>
+
+          </div><!-- /row -->
+        </div><!-- /card-body -->
+
+        <div class="card-footer d-flex justify-content-between align-items-center">
+          <a href="{{ url_for('admin.customers') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Vissza az ügyfelek listájához
+          </a>
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-save me-1"></i>Ügyfél mentése az adatbázisba
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el, { placement: 'top', trigger: 'hover focus' });
+  });
+</script>
+{% endblock %}

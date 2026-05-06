@@ -1,0 +1,657 @@
+{% extends "admin/base.html" %}
+{% block title %}Vezérlőpult - Credit Scoring Admin{% endblock %}
+{% block page_title %}<i class="bi bi-speedometer2 me-2"></i>Vezérlőpult{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════ KPI KÁRTYÁK ═══════════════ -->
+<div class="row g-3 mb-4">
+
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #0d6efd !important;">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small text-uppercase fw-semibold mb-1">Nyilvántartott ügyfelek</div>
+          <h2 class="fw-bold text-primary mb-0">{{ total_customers }}</h2>
+        </div>
+        <i class="bi bi-people fs-1 text-primary opacity-25"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #6f42c1 !important;">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small text-uppercase fw-semibold mb-1">Elvégzett minősítések</div>
+          <h2 class="fw-bold text-purple mb-0" style="color:#6f42c1">{{ stats.total }}</h2>
+        </div>
+        <i class="bi bi-graph-up fs-1 opacity-25" style="color:#6f42c1"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #dc3545 !important;">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small text-uppercase fw-semibold mb-1">Nemfizetési kockázat (arány)</div>
+          <h2 class="fw-bold text-danger mb-0">{{ "%.1f"|format(stats.default_rate * 100) }}%</h2>
+          <small class="text-muted">{{ stats.defaults }} db magas kockázatú</small>
+        </div>
+        <i class="bi bi-x-octagon fs-1 text-danger opacity-25"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-md-3">
+    <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #fd7e14 !important;">
+      <div class="card-body d-flex justify-content-between align-items-start">
+        <div>
+          <div class="text-muted small text-uppercase fw-semibold mb-1">Elfogultsági riasztás</div>
+          <h2 class="fw-bold text-warning mb-0">{{ stats.bias_detections }}</h2>
+          <small class="text-muted">modell vs. szöveg eltérés</small>
+        </div>
+        <i class="bi bi-exclamation-triangle fs-1 text-warning opacity-25"></i>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ HITELIGÉNY KPI-K ═══════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <i class="bi bi-file-earmark-text text-primary"></i>
+      <span class="fw-semibold text-muted text-uppercase small">Hiteligények állapota</span>
+    </div>
+  </div>
+
+  {% set loan_items = [
+    ('Összesen beérkezett', loan_stats.total, 'bg-primary', 'bi-inbox'),
+    ('Várakozó elbírálásra', loan_stats.pending, 'bg-secondary', 'bi-hourglass-split'),
+    ('Gépi minősítés kész', loan_stats.scored, 'bg-info text-dark', 'bi-cpu'),
+    ('Jóváhagyott', loan_stats.approved, 'bg-success', 'bi-check-circle'),
+    ('Elutasított', loan_stats.rejected, 'bg-danger', 'bi-x-circle'),
+    ('Kézi elbírálás alatt', loan_stats.manual, 'bg-warning text-dark', 'bi-person-check'),
+  ] %}
+  {% for label, val, bg, icon in loan_items %}
+  <div class="col-6 col-md-2">
+    <div class="card border-0 shadow-sm text-center py-2">
+      <div class="card-body p-2">
+        <span class="badge {{ bg }} mb-1"><i class="bi {{ icon }}"></i></span>
+        <div class="fw-bold fs-4">{{ val }}</div>
+        <div class="text-muted" style="font-size:.7rem">{{ label }}</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ═══════════════ DIAGRAMOK ═══════════════ -->
+<div class="row g-3 mb-4">
+
+  <!-- Fánk: Minősítési eredmény megoszlás -->
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-pie-chart me-1 text-primary"></i>Hitelminősítési eredmény megoszlás
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        <canvas id="donutPrediction" style="max-height:220px"></canvas>
+        <div class="d-flex gap-3 mt-3 small">
+          <span><span class="badge bg-success">&nbsp;</span> Alacsony kockázat: {{ stats.non_defaults }}</span>
+          <span><span class="badge bg-danger">&nbsp;</span> Magas kockázat: {{ stats.defaults }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fánk: Hiteligény állapot megoszlás -->
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-pie-chart-fill me-1 text-success"></i>Hiteligények állapot-megoszlása
+      </div>
+      <div class="card-body d-flex flex-column align-items-center justify-content-center">
+        <canvas id="donutLoans" style="max-height:220px"></canvas>
+        <div class="d-flex flex-wrap gap-2 mt-3 small justify-content-center">
+          <span><span class="badge bg-secondary">&nbsp;</span> Várakozó: {{ loan_stats.pending }}</span>
+          <span><span class="badge bg-info text-dark">&nbsp;</span> Minősített: {{ loan_stats.scored }}</span>
+          <span><span class="badge bg-success">&nbsp;</span> Jóváhagyott: {{ loan_stats.approved }}</span>
+          <span><span class="badge bg-danger">&nbsp;</span> Elutasított: {{ loan_stats.rejected }}</span>
+          <span><span class="badge bg-warning text-dark">&nbsp;</span> Kézi: {{ loan_stats.manual }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vízszintes sáv: Modell teljesítmény -->
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header fw-semibold">
+        <i class="bi bi-bar-chart-line me-1 text-purple" style="color:#6f42c1"></i>Éles modell teljesítmény
+      </div>
+      <div class="card-body d-flex flex-column justify-content-center">
+        {% if prod_model %}
+        <p class="mb-3 small text-muted">
+          <strong>{{ prod_model.model_name }}</strong> — {{ prod_model.version }}. verzió
+        </p>
+        <canvas id="barModel" style="max-height:200px"></canvas>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-cpu fs-3 opacity-50 d-block mb-2"></i>
+          Még nincs betanított éles modell.<br>
+          <a href="{{ url_for('admin.model_versions') }}" class="btn btn-sm btn-outline-primary mt-2">Modellek kezelése</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ TÁBLÁK ═══════════════ -->
+<div class="row g-3">
+
+  <!-- Legutóbbi minősítések -->
+  <div class="col-md-8">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-clock-history me-1"></i>Legutóbbi hitelminősítések</strong>
+        <a href="{{ url_for('admin.predictions') }}" class="btn btn-sm btn-outline-secondary">Összes →</a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th>Időpont</th>
+              <th>Ügyfél</th>
+              <th>Eredmény</th>
+              <th>
+                Nemfizetési val.
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                   title="Probability of Default (PD): annak valószínűsége, hogy az ügyfél nem teljesít. 50% felett a modell magas kockázatot jelez."></i>
+              </th>
+              <th>Riasztás</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in recent_predictions %}
+            <tr>
+              <td class="text-muted">{{ p.created_at.strftime('%m-%d %H:%M') if p.created_at else '-' }}</td>
+              <td>
+                {% if p.customer %}
+                <a href="{{ url_for('admin.customer_detail', customer_id=p.customer_id) }}" class="text-decoration-none fw-semibold">{{ p.customer.name }}</a>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td>
+                {% if p.prediction == 1 %}
+                <span class="badge bg-danger">⚠ Magas kockázat</span>
+                {% else %}
+                <span class="badge bg-success">✓ Alacsony kockázat</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="progress flex-grow-1" style="height:6px;min-width:60px">
+                    <div class="progress-bar {% if p.probability_of_default > 0.5 %}bg-danger{% elif p.probability_of_default > 0.3 %}bg-warning{% else %}bg-success{% endif %}"
+                         style="width:{{ (p.probability_of_default * 100)|round|int }}%"></div>
+                  </div>
+                  <span>{{ "%.0f"|format(p.probability_of_default * 100) }}%</span>
+                </div>
+              </td>
+              <td>
+                {% if p.bias_detected %}
+                <span class="badge bg-warning text-dark" data-bs-toggle="tooltip"
+                      title="A modell nemfizetést jelez, de a szöveges leírás pozitív hangvételű — lehetséges elfogultság.">
+                  ⚡ Eltérés
+                </span>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">Még nincs rögzített minősítés.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jobb oldali panel -->
+  <div class="col-md-4 d-flex flex-column gap-3">
+
+    <!-- Éles modell adatlap -->
+    <div class="card shadow-sm">
+      <div class="card-header"><strong><i class="bi bi-layers me-1"></i>Éles modell adatlap</strong></div>
+      <div class="card-body small">
+        {% if prod_model %}
+        <table class="table table-sm mb-0">
+          <tr><td class="text-muted">Modell neve</td><td><strong>{{ prod_model.model_name }}</strong></td></tr>
+          <tr><td class="text-muted">Verzió</td><td>{{ prod_model.version }}</td></tr>
+          <tr>
+            <td class="text-muted">
+              Champion F1
+              <i class="bi bi-info-circle ms-1" data-bs-toggle="tooltip"
+                 title="F1-pontszám: a pontosság és teljesség harmonikus átlaga. 1.0 = tökéletes, 0.5 alatti értéknél a modell gyenge."></i>
+            </td>
+            <td><strong>{{ "%.4f"|format(prod_model.champion_f1) if prod_model.champion_f1 else '—' }}</strong></td>
+          </tr>
+          <tr>
+            <td class="text-muted">
+              Champion AUC
+              <i class="bi bi-info-circle ms-1" data-bs-toggle="tooltip"
+                 title="ROC-AUC: a modell rangsorolási képessége. 0.9 felett kiváló, 0.7–0.9 jó, 0.5 = véletlenszerű."></i>
+            </td>
+            <td><strong>{{ "%.4f"|format(prod_model.champion_roc_auc) if prod_model.champion_roc_auc else '—' }}</strong></td>
+          </tr>
+          <tr>
+            <td class="text-muted">
+              Challenger F1
+              <i class="bi bi-info-circle ms-1" data-bs-toggle="tooltip"
+                 title="Az árnyékban futó LightGBM modell F1-pontszáma. Ha meghaladja a Champion értékét, érdemes modellváltást megfontolni."></i>
+            </td>
+            <td>{{ "%.4f"|format(prod_model.challenger_f1) if prod_model.challenger_f1 else '—' }}</td>
+          </tr>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0 text-center py-2">Nincs betanított éles modell.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Legutóbb felvett ügyfelek -->
+    <div class="card shadow-sm">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-person-lines-fill me-1"></i>Legutóbb felvett ügyfelek</strong>
+        <a href="{{ url_for('admin.customers') }}" class="btn btn-sm btn-outline-secondary">Összes →</a>
+      </div>
+      <div class="list-group list-group-flush">
+        {% for c in recent_customers %}
+        <a href="{{ url_for('admin.customer_detail', customer_id=c.id) }}"
+           class="list-group-item list-group-item-action py-2">
+          <div class="d-flex justify-content-between align-items-start">
+            <strong class="small">{{ c.name }}</strong>
+            <span class="badge bg-light text-dark border">{{ c.industry_code or '—' }}</span>
+          </div>
+          <small class="text-muted">{{ c.legal_entity_type or '—' }} {% if c.client_segment %}· {{ c.client_segment }}{% endif %}</small>
+        </a>
+        {% else %}
+        <div class="list-group-item text-muted text-center py-3">Nincs ügyfél.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ ÜGYFÉL-ÖSSZEHASONLÍTÓ ═══════════════ -->
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <strong><i class="bi bi-arrows-angle-expand me-1 text-primary"></i>Ügyfelek pénzügyi összehasonlítása</strong>
+          <small class="text-muted ms-2">— válassz maximum 5 ügyfelet az összehasonlításhoz</small>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <!-- Keresőmező a listához -->
+          <input type="text" id="customerSearch" class="form-control form-control-sm" style="width:200px"
+                 placeholder="🔍 Keresés névben…">
+          <button class="btn btn-sm btn-outline-danger" onclick="clearSelection()">
+            <i class="bi bi-x-circle me-1"></i>Törlés
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+
+          <!-- Ügyfél-lista (checkbox) -->
+          <div class="col-md-4">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Ügyfelek kiválasztása</p>
+            <div id="customerList" class="border rounded p-2" style="max-height:340px;overflow-y:auto">
+              <!-- JS tölti fel -->
+              <div class="text-muted text-center py-3 small" id="noCustomersMsg">
+                <i class="bi bi-people opacity-50 d-block fs-3 mb-1"></i>
+                Még nincs felvett ügyfél.
+              </div>
+            </div>
+            <div class="mt-2">
+              <span class="badge bg-primary" id="selectedCount">0 kiválasztva</span>
+              <small class="text-muted ms-1">(max. 5)</small>
+            </div>
+          </div>
+
+          <!-- Radar összehasonlító (2+ ügyfélnél értelmes) -->
+          <div class="col-md-5 d-flex flex-column">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase text-center">Pénzügyi mutatók radara (min. 2 ügyfél)</p>
+            <div style="position:relative;flex:1;min-height:280px">
+              <canvas id="radarChart" style="display:none"></canvas>
+            </div>
+            <div id="radarEmpty" class="text-center text-muted py-4">
+              <i class="bi bi-radar fs-2 opacity-25 d-block mb-2"></i>
+              Válassz legalább 2 ügyfelet az összehasonlításhoz.
+            </div>
+          </div>
+
+          <!-- Sáv-diagram (kiválasztott metrika) -->
+          <div class="col-md-3 d-flex flex-column">
+            <p class="small text-muted fw-semibold mb-2 text-uppercase">Részletes mutatók</p>
+            <select id="metricSelect" class="form-select form-select-sm mb-3">
+              <option value="operating_margin">Operatív eredményhányad (%)</option>
+              <option value="return_on_assets">Eszközarányos megtérülés / ROA (%)</option>
+              <option value="return_on_equity">Saját tőke megtérülése / ROE (%)</option>
+              <option value="current_ratio">Likviditási ráta (Current Ratio)</option>
+              <option value="quick_ratio">Gyorslikviditási mutató (Quick Ratio)</option>
+              <option value="debt_to_equity">Tőkeáttételi mutató (D/E)</option>
+              <option value="gross_margin">Bruttó marzs (%)</option>
+              <option value="annual_revenue_growth">Éves árbevétel-növekedés (%)</option>
+              <option value="operating_cash_flow_ratio">Működési CF ráta</option>
+              <option value="late_payment_count">Késedelmes fizetések száma</option>
+            </select>
+            <div style="position:relative;flex:1;min-height:220px">
+              <canvas id="barCompare"></canvas>
+            </div>
+            <div id="barEmpty" class="text-center text-muted py-3 small">
+              <i class="bi bi-bar-chart opacity-25 fs-3 d-block"></i>
+              Várakozás…
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // Tooltip init
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el =>
+    new bootstrap.Tooltip(el, { placement: 'top', trigger: 'hover focus' })
+  );
+
+  const chartDefaults = {
+    plugins: { legend: { display: false } },
+    responsive: true,
+    maintainAspectRatio: true,
+  };
+
+  // ── 1. Fánk: Hitelminősítési eredmény ──
+  new Chart(document.getElementById('donutPrediction'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Alacsony kockázat', 'Magas kockázat'],
+      datasets: [{
+        data: [{{ stats.non_defaults }}, {{ stats.defaults }}],
+        backgroundColor: ['#198754', '#dc3545'],
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '65%',
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { font: { size: 12 } } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} db` } }
+      }
+    }
+  });
+
+  // ── 2. Fánk: Hiteligény állapotok ──
+  new Chart(document.getElementById('donutLoans'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Várakozó', 'Minősített', 'Jóváhagyott', 'Elutasított', 'Kézi elbírálás'],
+      datasets: [{
+        data: [
+          {{ loan_stats.pending }},
+          {{ loan_stats.scored }},
+          {{ loan_stats.approved }},
+          {{ loan_stats.rejected }},
+          {{ loan_stats.manual }},
+        ],
+        backgroundColor: ['#6c757d', '#0dcaf0', '#198754', '#dc3545', '#ffc107'],
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      cutout: '65%',
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed} db` } }
+      }
+    }
+  });
+
+  // ── 3. Sáv: Modell teljesítmény ──
+  {% if prod_model %}
+  new Chart(document.getElementById('barModel'), {
+    type: 'bar',
+    data: {
+      labels: ['Champion\nF1', 'Champion\nAUC', 'Challenger\nF1'],
+      datasets: [{
+        label: 'Pontszám',
+        data: [
+          {{ prod_model.champion_f1 or 0 }},
+          {{ prod_model.champion_roc_auc or 0 }},
+          {{ prod_model.challenger_f1 or 0 }},
+        ],
+        backgroundColor: ['#0d6efd', '#6f42c1', '#fd7e14'],
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          min: 0, max: 1,
+          ticks: { callback: v => (v * 100).toFixed(0) + '%' },
+          grid: { color: '#f0f0f0' }
+        },
+        y: { grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${(ctx.parsed.x * 100).toFixed(2)}%` } }
+      }
+    }
+  });
+  {% endif %}
+
+  // ════════════════════════════════════════════════
+  // ÜGYFÉL-ÖSSZEHASONLÍTÓ  (event delegation alapon)
+  // ════════════════════════════════════════════════
+  const ALL_CUSTOMERS = {{ customers_json | safe }};
+
+  const RADAR_METRICS = [
+    { key: 'operating_margin',          label: 'Op. Margin' },
+    { key: 'return_on_assets',          label: 'ROA' },
+    { key: 'return_on_equity',          label: 'ROE' },
+    { key: 'current_ratio',             label: 'Likv. ráta' },
+    { key: 'quick_ratio',               label: 'Gyors lik.' },
+    { key: 'gross_margin',              label: 'Bruttó marzs' },
+    { key: 'annual_revenue_growth',     label: 'Árb. növ.' },
+    { key: 'debt_to_equity',            label: 'D/E' },
+  ];
+
+  const PALETTE = ['#0d6efd','#198754','#dc3545','#fd7e14','#6f42c1'];
+
+  const selectedIds = new Set();
+  let radarChart = null;
+  let barChart   = null;
+
+  // ── Ügyféllista kezdeti renderelés (egyszer fut) ──
+  function initCustomerList() {
+    const list = document.getElementById('customerList');
+    const msg  = document.getElementById('noCustomersMsg');
+
+    if (ALL_CUSTOMERS.length === 0) { msg.style.display = ''; return; }
+    msg.style.display = 'none';
+
+    // Minden ügyfélnek saját sora – filter esetén csak elrejtjük (display:none)
+    list.innerHTML = ALL_CUSTOMERS.map(c => `
+      <label class="d-flex align-items-start gap-2 py-1 px-1 border-bottom w-100"
+             style="cursor:pointer;user-select:none" data-cust-id="${c.id}">
+        <input type="checkbox" class="form-check-input mt-1 flex-shrink-0"
+               data-cust-id="${c.id}">
+        <div class="small overflow-hidden">
+          <span class="fw-semibold">${c.name}</span><br>
+          <span class="text-muted" style="font-size:.72rem">${c.legal_entity_type} · ${c.industry_code}</span>
+        </div>
+      </label>
+    `).join('');
+
+    // Egyetlen eseménykezelő a konténeren – nincs inline handler, nincs double-fire
+    list.addEventListener('change', e => {
+      const chk = e.target;
+      if (chk.type !== 'checkbox') return;
+      const id = chk.dataset.custId;
+      if (chk.checked) {
+        if (selectedIds.size >= 5) {
+          alert('Egyszerre legfeljebb 5 ügyfelet lehet összehasonlítani.');
+          chk.checked = false;
+          return;
+        }
+        selectedIds.add(id);
+      } else {
+        selectedIds.delete(id);
+      }
+      updateCounter();
+      updateCharts();
+    });
+  }
+
+  function updateCounter() {
+    document.getElementById('selectedCount').textContent = `${selectedIds.size} kiválasztva`;
+  }
+
+  // Filter: sorok elrejtése/megjelenítése, DOM nem épül újra
+  function filterList(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('#customerList label[data-cust-id]').forEach(lbl => {
+      const name = lbl.querySelector('span.fw-semibold').textContent.toLowerCase();
+      lbl.style.display = name.includes(q) ? '' : 'none';
+    });
+  }
+
+  function clearSelection() {
+    selectedIds.clear();
+    document.querySelectorAll('#customerList input[type=checkbox]').forEach(c => c.checked = false);
+    updateCounter();
+    updateCharts();
+  }
+
+  // ── Diagramok frissítése ──
+  function updateCharts() {
+    const selected   = ALL_CUSTOMERS.filter(c => selectedIds.has(c.id));
+    const radarEmpty  = document.getElementById('radarEmpty');
+    const barEmpty    = document.getElementById('barEmpty');
+    const radarCanvas = document.getElementById('radarChart');
+    const barCanvas   = document.getElementById('barCompare');
+
+    // ── Sávdiagram (1+ ügyfél) ──
+    if (selected.length === 0) {
+      barEmpty.style.display  = '';
+      barCanvas.style.display = 'none';
+      if (barChart) { barChart.destroy(); barChart = null; }
+    } else {
+      barEmpty.style.display  = 'none';
+      barCanvas.style.display = '';
+      const metric      = document.getElementById('metricSelect').value;
+      const metricLabel = document.getElementById('metricSelect').selectedOptions[0].text;
+      if (barChart) barChart.destroy();
+      barChart = new Chart(barCanvas, {
+        type: 'bar',
+        data: {
+          labels:   selected.map(c => c.name.length > 16 ? c.name.slice(0,16)+'…' : c.name),
+          datasets: [{
+            label: metricLabel,
+            data:  selected.map(c => +(c[metric] ?? 0).toFixed(2)),
+            backgroundColor: selected.map((_, i) => PALETTE[i]),
+            borderRadius: 5,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+          scales: {
+            x: { grid: { color: '#f0f0f0' }, ticks: { font: { size: 11 } } },
+            y: { grid: { display: false },   ticks: { font: { size: 11 } } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${metricLabel}: ${ctx.parsed.x}` } }
+          }
+        }
+      });
+    }
+
+    // ── Radar (csak 2+ ügyfélnél) ──
+    if (selected.length < 2) {
+      radarEmpty.style.display  = '';
+      radarCanvas.style.display = 'none';
+      if (radarChart) { radarChart.destroy(); radarChart = null; }
+      radarEmpty.innerHTML = selected.length === 1
+        ? '<i class="bi bi-info-circle text-primary fs-3 opacity-50 d-block mb-2"></i><small>Válassz még legalább 1 ügyfelet a radar összehasonlításhoz.</small>'
+        : '<i class="bi bi-radar fs-2 opacity-25 d-block mb-2"></i><small>Válassz legalább 2 ügyfelet az összehasonlításhoz.</small>';
+    } else {
+      radarEmpty.style.display  = 'none';
+      radarCanvas.style.display = '';
+      if (radarChart) radarChart.destroy();
+      radarChart = new Chart(radarCanvas, {
+        type: 'radar',
+        data: {
+          labels: RADAR_METRICS.map(m => m.label),
+          datasets: selected.map((c, i) => ({
+            label: c.name,
+            data:  RADAR_METRICS.map(m => +(c[m.key] ?? 0).toFixed(2)),
+            backgroundColor: PALETTE[i] + '28',
+            borderColor: PALETTE[i],
+            borderWidth: 2,
+            pointBackgroundColor: PALETTE[i],
+            pointRadius: 4,
+          }))
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          scales: {
+            r: {
+              ticks: { font: { size: 10 }, backdropColor: 'transparent' },
+              pointLabels: { font: { size: 11 } },
+              grid: { color: '#e0e0e0' }
+            }
+          },
+          plugins: {
+            legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.r}` } }
+          }
+        }
+      });
+    }
+  }
+
+  document.getElementById('metricSelect').addEventListener('change', () => {
+    if (selectedIds.size > 0) updateCharts();
+  });
+
+  document.getElementById('customerSearch').addEventListener('input', e => {
+    filterList(e.target.value);
+  });
+
+  // Init
+  initCustomerList();
+  updateCharts();
+</script>
+{% endblock %}

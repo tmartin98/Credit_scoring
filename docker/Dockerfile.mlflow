@@ -1,0 +1,4 @@
+# MLflow Tracking Server - psycopg2 és curl hozzáadással
+FROM ghcr.io/mlflow/mlflow:v2.18.0
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir psycopg2-binary

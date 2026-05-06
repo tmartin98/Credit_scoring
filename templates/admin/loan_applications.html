@@ -1,0 +1,102 @@
+{% extends "admin/base.html" %}
+{% block title %}Hiteligények{% endblock %}
+{% block page_title %}<i class="bi bi-file-earmark-text me-2"></i>Hiteligények{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="btn-group">
+    <a href="{{ url_for('admin.loan_applications') }}"
+       class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">Összes</a>
+    {% for key, (label, color) in status_labels.items() %}
+    <a href="{{ url_for('admin.loan_applications', status=key) }}"
+       class="btn btn-sm {% if status_filter == key %}btn-{{ color }}{% else %}btn-outline-{{ color }}{% endif %}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+  <a href="{{ url_for('admin.create_loan_application') }}" class="btn btn-success">
+    <i class="bi bi-plus-circle me-1"></i>Új hiteligény
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Benyújtás dátuma</th>
+          <th>Ügyfél</th>
+          <th>
+            Igényelt összeg
+            <i class="bi bi-info-circle text-muted ms-1"
+               data-bs-toggle="tooltip"
+               title="Az ügyfél által kért hitelösszeg forintban."></i>
+          </th>
+          <th>Hitelcél</th>
+          <th>Futamidő</th>
+          <th>
+            Státusz
+            <i class="bi bi-info-circle text-muted ms-1"
+               data-bs-toggle="tooltip"
+               title="Függőben: benyújtva, de még nem bírálták el. Kreditbírálat kész: a modell lefutott. Jóváhagyva/Elutasítva: döntés meghozva."></i>
+          </th>
+          <th>
+            PD Score
+            <i class="bi bi-info-circle text-muted ms-1"
+               data-bs-toggle="tooltip"
+               title="Probability of Default – a modell által becsült nemfizetési valószínűség. 0.5 felett DEFAULT."></i>
+          </th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in apps %}
+        <tr>
+          <td><small>{{ a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '-' }}</small></td>
+          <td>
+            <a href="{{ url_for('admin.customer_detail', customer_id=a.customer_id) }}">
+              {{ a.customer.name if a.customer else a.customer_id }}
+            </a>
+          </td>
+          <td>{{ "{:,.0f}".format(a.requested_amount) }} Ft</td>
+          <td>{{ a.loan_purpose or '-' }}</td>
+          <td>{{ (a.loan_term_months|string + ' hónap') if a.loan_term_months else '-' }}</td>
+          <td>
+            {% set lbl, col = status_labels.get(a.status, (a.status, 'secondary')) %}
+            <span class="badge bg-{{ col }}">{{ lbl }}</span>
+          </td>
+          <td>
+            {% if a.prediction %}
+              <span class="fw-semibold {% if a.prediction.probability_of_default > 0.5 %}text-danger{% else %}text-success{% endif %}"
+                    data-bs-toggle="tooltip"
+                    title="PD = {{ '%.4f'|format(a.prediction.probability_of_default) }} — 50% felett: magas kockázat">
+                {{ "%.1f"|format(a.prediction.probability_of_default * 100) }}%
+              </span>
+            {% else %}-{% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('admin.loan_application_detail', app_id=a.id) }}"
+               class="btn btn-sm btn-outline-primary">Részletek</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-4">
+            Nincs hiteligény.
+            <a href="{{ url_for('admin.create_loan_application') }}">Hozzon létre egyet!</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el, { placement: 'top', trigger: 'hover focus' });
+  });
+</script>
+{% endblock %}

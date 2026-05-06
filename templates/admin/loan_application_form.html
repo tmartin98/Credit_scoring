@@ -1,0 +1,124 @@
+{% extends "admin/base.html" %}
+{% block title %}Új hiteligény{% endblock %}
+{% block page_title %}<i class="bi bi-file-earmark-plus me-2"></i>Új hiteligény benyújtása{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <strong>Hiteligény adatai</strong>
+      </div>
+      <form method="POST">
+        <div class="card-body">
+
+          <!-- Ügyfél -->
+          <h6 class="text-muted text-uppercase small mb-3">
+            <i class="bi bi-person-badge me-1"></i>Kérelmező
+          </h6>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Ügyfél
+              <i class="bi bi-info-circle text-muted ms-1"
+                 data-bs-toggle="tooltip"
+                 title="Válassza ki azt az ügyfelet, aki a hiteligényt benyújtja. Az ügyfél pénzügyi adatait a kreditbírálat automatikusan felhasználja."></i>
+              <span class="text-danger">*</span>
+            </label>
+            <select name="customer_id" class="form-select" required>
+              <option value="">— Válasszon ügyfelet —</option>
+              {% for c in customers %}
+              <option value="{{ c.id }}" {% if request.args.get('customer_id') == c.id|string %}selected{% endif %}>{{ c.name }}{% if c.email %} ({{ c.email }}){% endif %}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Ha az ügyfél nem szerepel a listában, először hozza létre az
+              <a href="{{ url_for('admin.create_customer') }}">Ügyfelek</a> menüben.</div>
+          </div>
+
+          <hr>
+          <!-- Hitel paraméterek -->
+          <h6 class="text-muted text-uppercase small mb-3">
+            <i class="bi bi-cash-stack me-1"></i>Hitel paraméterei
+          </h6>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">
+                Igényelt hitelösszeg
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="Az ügyfél által kért hitelösszeg forintban. Ez az adat rögzítésre kerül, de a kreditbírálati modell a pénzügyi mutatók alapján dönt."></i>
+                <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <input type="number" name="requested_amount" class="form-control"
+                       placeholder="pl. 5000000" min="1" step="1" required>
+                <span class="input-group-text">Ft</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">
+                Futamidő
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="A kért törlesztési időszak hossza hónapokban. Pl. 12 = 1 év, 60 = 5 év."></i>
+              </label>
+              <div class="input-group">
+                <input type="number" name="loan_term_months" class="form-control"
+                       placeholder="pl. 36" min="1" max="360">
+                <span class="input-group-text">hónap</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Hitelcél
+              <i class="bi bi-info-circle text-muted ms-1"
+                 data-bs-toggle="tooltip"
+                 title="Mire kívánja az ügyfél felhasználni a hitelt? Ez segít a kockázat kontextualizálásában."></i>
+            </label>
+            <select name="loan_purpose" class="form-select">
+              <option value="">— Válasszon —</option>
+              {% for p in loan_purposes %}
+              <option value="{{ p }}">{{ p }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Kérelmező megjegyzése
+              <i class="bi bi-info-circle text-muted ms-1"
+                 data-bs-toggle="tooltip"
+                 title="Szabadszöveges indoklás vagy kontextus a hiteligényhez. Az NLP modul sentiment elemzést végez ezen a szövegen."></i>
+            </label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="pl. Az igény célja egy új gyártósor finanszírozása..."></textarea>
+          </div>
+
+          <div class="alert alert-info small mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>A kreditbírálat a mentés után futtatható.</strong> A modell az ügyfél tárolt pénzügyi adatait
+            használja, és figyelembe veszi az ügyfél korábbi elutasításainak számát is.
+          </div>
+
+        </div>
+        <div class="card-footer d-flex gap-2">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-send me-1"></i>Hiteligény benyújtása
+          </button>
+          <a href="{{ url_for('admin.loan_applications') }}" class="btn btn-outline-secondary">Mégsem</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el, { placement: 'top', trigger: 'hover focus' });
+  });
+</script>
+{% endblock %}

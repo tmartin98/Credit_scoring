@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% block title %}Predikció részlet{% endblock %}
+{% block page_title %}Predikció részlet{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><strong>Döntés eredménye</strong></div>
+      <div class="card-body">
+        <div class="text-center mb-3">
+          {% if pred.prediction == 1 %}
+          <span class="badge bg-danger fs-4 px-4 py-2">⚠️ DEFAULT</span>
+          {% else %}
+          <span class="badge bg-success fs-4 px-4 py-2">✅ NON-DEFAULT</span>
+          {% endif %}
+        </div>
+        <dl class="row">
+          <dt class="col-sm-6">PD Score (Champion)</dt>
+          <dd class="col-sm-6"><strong>{{ "%.4f"|format(pred.probability_of_default) }}</strong></dd>
+          <dt class="col-sm-6">Challenger döntés</dt>
+          <dd class="col-sm-6">
+            {% if pred.challenger_prediction == 1 %}<span class="badge bg-danger">DEFAULT</span>
+            {% elif pred.challenger_prediction == 0 %}<span class="badge bg-success">NON-DEFAULT</span>
+            {% else %}-{% endif %}
+          </dd>
+          <dt class="col-sm-6">Challenger PD</dt>
+          <dd class="col-sm-6">{{ "%.4f"|format(pred.challenger_probability) if pred.challenger_probability is not none else '-' }}</dd>
+          <dt class="col-sm-6">Modellek egyeznek</dt>
+          <dd class="col-sm-6">
+            {% if pred.models_agree %}<span class="text-success">✓ Igen</span>
+            {% elif pred.models_agree is not none %}<span class="text-danger">✗ Nem</span>
+            {% else %}-{% endif %}
+          </dd>
+          <dt class="col-sm-6">Sentiment score</dt>
+          <dd class="col-sm-6">{{ pred.sentiment_score if pred.sentiment_score is not none else '-' }}</dd>
+          <dt class="col-sm-6">Bias detektálva</dt>
+          <dd class="col-sm-6">
+            {% if pred.bias_detected %}<span class="text-warning fw-bold">⚠️ Igen</span>
+            {% else %}<span class="text-muted">Nem</span>{% endif %}
+          </dd>
+          <dt class="col-sm-6">Modellverzió</dt>
+          <dd class="col-sm-6"><code>{{ pred.model_version or '-' }}</code></dd>
+          <dt class="col-sm-6">MLflow Run ID</dt>
+          <dd class="col-sm-6"><code class="small">{{ pred.mlflow_run_id or '-' }}</code></dd>
+          <dt class="col-sm-6">Dátum</dt>
+          <dd class="col-sm-6"><small>{{ pred.created_at.strftime('%Y-%m-%d %H:%M:%S') if pred.created_at else '-' }}</small></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header"><strong>Input adatok (snapshot)</strong></div>
+      <div class="card-body">
+        {% if pred.input_data %}
+        <pre class="bg-light p-3 rounded small" style="max-height: 400px; overflow-y: auto;">{{ pred.input_data | tojson(indent=2) }}</pre>
+        {% else %}
+        <p class="text-muted">Nem elérhető.</p>
+        {% endif %}
+      </div>
+    </div>
+    {% if pred.customer %}
+    <div class="card mt-3">
+      <div class="card-header"><strong>Ügyfél</strong></div>
+      <div class="card-body">
+        <a href="{{ url_for('admin.customer_detail', customer_id=pred.customer_id) }}" class="fw-bold">
+          {{ pred.customer.name }}
+        </a>
+        <div class="text-muted small">{{ pred.customer.email or '' }} | {{ pred.customer.industry_code or '' }}</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+<div class="mt-3">
+  <a href="{{ url_for('admin.predictions') }}" class="btn btn-outline-secondary">← Vissza</a>
+</div>
+{% endblock %}

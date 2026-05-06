@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Credit Scoring Admin{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; }
+        .sidebar { min-height: 100vh; background: #1a1a2e; }
+        .sidebar .nav-link { color: #adb5bd; padding: 10px 20px; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .sidebar .brand { color: #fff; font-weight: bold; font-size: 1.2rem; padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .stat-card { border-left: 4px solid; }
+        .stat-card.default-card { border-color: #dc3545; }
+        .stat-card.good-card { border-color: #28a745; }
+        .stat-card.total-card { border-color: #007bff; }
+        .stat-card.bias-card { border-color: #ffc107; }
+        .flash-messages { position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-2 p-0 sidebar">
+      <div class="brand"><i class="bi bi-bank2 me-2"></i>Credit Scoring</div>
+      <nav class="nav flex-column mt-2">
+        <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+          <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </a>
+        <a class="nav-link {% if 'customer' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('admin.customers') }}">
+          <i class="bi bi-people me-2"></i>Ügyfelek
+        </a>
+        <a class="nav-link {% if 'prediction' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('admin.predictions') }}">
+          <i class="bi bi-graph-up me-2"></i>Predikciók
+        </a>
+        <a class="nav-link {% if 'loan_application' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('admin.loan_applications') }}">
+          <i class="bi bi-file-earmark-text me-2"></i>Hiteligények
+        </a>
+        <a class="nav-link {% if 'model' in (request.endpoint or '') %}active{% endif %}" href="{{ url_for('admin.model_versions') }}">
+          <i class="bi bi-layers me-2"></i>Modellverziók
+        </a>
+        {% if session.get('admin_role') == 'admin' %}
+        <a class="nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}" href="{{ url_for('admin.users') }}">
+          <i class="bi bi-shield-lock me-2"></i>Felhasználók
+        </a>
+        {% endif %}
+        <hr class="border-secondary mx-3">
+        <a class="nav-link text-danger" href="{{ url_for('admin.logout') }}">
+          <i class="bi bi-box-arrow-right me-2"></i>Kijelentkezés
+        </a>
+      </nav>
+    </div>
+    <div class="col-md-10 p-4">
+      <div class="flash-messages">
+        {% for cat, msg in get_flashed_messages(with_categories=True) %}
+        <div class="alert alert-{{ 'danger' if cat == 'error' else 'success' }} alert-dismissible fade show">
+          {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0">{% block page_title %}Dashboard{% endblock %}</h4>
+        <small class="text-muted"><i class="bi bi-person-circle me-1"></i>{{ session.get('admin_user') }} ({{ session.get('admin_role') }})</small>
+      </div>
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

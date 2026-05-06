@@ -1,0 +1,201 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ customer.name }} - Ügyfél{% endblock %}
+{% block page_title %}Ügyfél: {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><strong><i class="bi bi-person-badge me-1"></i>Ügyfél adatok</strong></div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-sm-6">Név</dt><dd class="col-sm-6">{{ customer.name }}</dd>
+          <dt class="col-sm-6">Email</dt><dd class="col-sm-6">{{ customer.email or '-' }}</dd>
+          <dt class="col-sm-6">Iparág</dt><dd class="col-sm-6">{{ customer.industry_code or '-' }}</dd>
+          <dt class="col-sm-6">Jogi forma</dt><dd class="col-sm-6">{{ customer.legal_entity_type or '-' }}</dd>
+          <dt class="col-sm-6">Ügyfélszegmens</dt><dd class="col-sm-6">{{ customer.client_segment or '-' }}</dd>
+          <dt class="col-sm-6">Megye</dt><dd class="col-sm-6">{{ customer.address_county or '-' }}</dd>
+          <dt class="col-sm-6">Kor (év)</dt><dd class="col-sm-6">{{ customer.business_age or '-' }}</dd>
+          <dt class="col-sm-6">Alkalmazottak</dt><dd class="col-sm-6">{{ customer.num_employees or '-' }}</dd>
+        </dl>
+        <hr class="my-2">
+        <p class="fw-semibold small text-muted mb-1">Mérleg &amp; Eredmény</p>
+        <dl class="row mb-0 small">
+          <dt class="col-sm-6">Nettó árbevétel</dt><dd class="col-sm-6">{{ customer.net_sales or '-' }}</dd>
+          <dt class="col-sm-6">Összes eszköz</dt><dd class="col-sm-6">{{ customer.total_assets or '-' }}</dd>
+          <dt class="col-sm-6">Összes kötelezettség</dt><dd class="col-sm-6">{{ customer.total_liabs or '-' }}</dd>
+          <dt class="col-sm-6">Forgóeszközök</dt><dd class="col-sm-6">{{ customer.current_assets or '-' }}</dd>
+          <dt class="col-sm-6">Rövid lej. köt.</dt><dd class="col-sm-6">{{ customer.current_liabs or '-' }}</dd>
+          <dt class="col-sm-6">Eredménytartalék</dt><dd class="col-sm-6">{{ customer.retained_earnings or '-' }}</dd>
+          <dt class="col-sm-6">Fedezet értéke</dt><dd class="col-sm-6">{{ customer.collateral_value or '-' }}</dd>
+          <dt class="col-sm-6">EBIT</dt><dd class="col-sm-6">{{ customer.ebit or '-' }}</dd>
+          <dt class="col-sm-6">Bruttó marzs</dt><dd class="col-sm-6">{% if customer.gross_margin is not none and customer.gross_margin != '' %}{{ customer.gross_margin }}%{% else %}-{% endif %}</dd>
+          <dt class="col-sm-6">Árb. növekedés</dt><dd class="col-sm-6">{% if customer.annual_revenue_growth is not none and customer.annual_revenue_growth != '' %}{{ customer.annual_revenue_growth }}%{% else %}-{% endif %}</dd>
+        </dl>
+        <hr class="my-2">
+        <p class="fw-semibold small text-muted mb-1">Aránymutatók</p>
+        <dl class="row mb-0 small">
+          <dt class="col-sm-6">Op. margin</dt><dd class="col-sm-6">{% if customer.operating_margin is not none and customer.operating_margin != '' %}{{ customer.operating_margin }}%{% else %}-{% endif %}</dd>
+          <dt class="col-sm-6">ROA</dt><dd class="col-sm-6">{% if customer.return_on_assets is not none and customer.return_on_assets != '' %}{{ customer.return_on_assets }}%{% else %}-{% endif %}</dd>
+          <dt class="col-sm-6">ROE</dt><dd class="col-sm-6">{% if customer.return_on_equity is not none and customer.return_on_equity != '' %}{{ customer.return_on_equity }}%{% else %}-{% endif %}</dd>
+          <dt class="col-sm-6">Current Ratio</dt><dd class="col-sm-6">{{ customer.current_ratio or '-' }}</dd>
+          <dt class="col-sm-6">Quick Ratio</dt><dd class="col-sm-6">{{ customer.quick_ratio or '-' }}</dd>
+          <dt class="col-sm-6">D/E Ratio</dt><dd class="col-sm-6">{{ customer.debt_to_equity or '-' }}</dd>
+          <dt class="col-sm-6">Forgótőke</dt><dd class="col-sm-6">{{ customer.working_capital or '-' }}</dd>
+          <dt class="col-sm-6">DSO (nap)</dt><dd class="col-sm-6">{{ customer.days_sales_outstanding or '-' }}</dd>
+          <dt class="col-sm-6">Oper. CF Ratio</dt><dd class="col-sm-6">{{ customer.operating_cash_flow_ratio or '-' }}</dd>
+          <dt class="col-sm-6">Késedelmes fiz.</dt><dd class="col-sm-6">{{ customer.late_payment_count }}</dd>
+        </dl>
+        {% if customer.description %}
+        <hr>
+        <p class="text-muted small mb-0"><em>{{ customer.description }}</em></p>
+        {% endif %}
+      </div>
+      <div class="card-footer d-grid gap-2">
+        <a href="{{ url_for('admin.create_loan_application') }}?customer_id={{ customer.id }}"
+           class="btn btn-primary">
+          <i class="bi bi-file-earmark-plus me-1"></i>Új hiteligény
+        </a>
+        <a href="{{ url_for('admin.customer_predict', customer_id=customer.id) }}"
+           class="btn btn-success">
+          <i class="bi bi-play-circle me-1"></i>Predikció futtatása
+        </a>
+        {% if session.get('admin_role') == 'admin' %}
+        <form method="POST" action="{{ url_for('admin.delete_customer', customer_id=customer.id) }}"
+              onsubmit="return confirm('Biztosan törli ezt az ügyfelet és összes predikcióját?')">
+          <button class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash me-1"></i>Ügyfél törlése</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+    <div class="col-md-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong><i class="bi bi-graph-up me-1"></i>Predikciós előzmények ({{ predictions|length }})</strong>
+        <a href="{{ url_for('admin.customer_predict', customer_id=customer.id) }}"
+           class="btn btn-sm btn-success">
+          <i class="bi bi-plus-circle me-1"></i>Új predikció
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Dátum</th>
+              <th>
+                Kockázati besorolás
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="A fő modell (XGBoost Champion) döntése. 'Magas kockázat' = nemfizetést valószínűsít (DEFAULT). 'Alacsony kockázat' = visszafizetést valószínűsít (NON-DEFAULT)."></i>
+              </th>
+              <th>
+                Nemfizetési valószínűség
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="Annak valószínűsége (0–100%), hogy az ügyfél nem fizeti vissza a hitelt. 50% felett a modell magas kockázatot jelez. (Technikai neve: Probability of Default / PD)"></i>
+              </th>
+              <th>
+                Másodlagos modell
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="A LightGBM Challenger modell párhuzamos döntése. Ha eltér a fő modelltől, az eset fokozottabb figyelmet igényel."></i>
+              </th>
+              <th>
+                Modellek egyeznek?
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="Ha a fő és a másodlagos modell azonos döntést hoz, az eredmény megbízhatóbb."></i>
+              </th>
+              <th>
+                Szöveg hangulata
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="Az ügyfél szöveges leírásának automatikus elemzése. Pozitív érték = bizakodó szöveg, negatív = kockázati jelzők dominálnak. (Technikai neve: NLP Sentiment Score)"></i>
+              </th>
+              <th>
+                Elfogultsági jelzés
+                <i class="bi bi-info-circle text-muted ms-1"
+                   data-bs-toggle="tooltip"
+                   title="Figyelmeztetés: a modell magas kockázatot jelez, de a szöveges leírás pozitív. Lehetséges szöveges elfogultság (bias)."></i>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in predictions %}
+            <tr>
+              <td><small>{{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '-' }}</small></td>
+              <td>
+                {% if p.prediction == 1 %}
+                <span class="badge bg-danger"
+                      data-bs-toggle="tooltip" title="DEFAULT – a modell nemfizetést valószínűsít">
+                  <i class="bi bi-x-circle me-1"></i>Magas kockázat
+                </span>
+                {% else %}
+                <span class="badge bg-success"
+                      data-bs-toggle="tooltip" title="NON-DEFAULT – a modell visszafizetést valószínűsít">
+                  <i class="bi bi-check-circle me-1"></i>Alacsony kockázat
+                </span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="fw-semibold {% if p.probability_of_default > 0.5 %}text-danger{% else %}text-success{% endif %}"
+                      data-bs-toggle="tooltip"
+                      title="PD = {{ '%.4f'|format(p.probability_of_default) }} — 50% felett: magas kockázat">
+                  {{ "%.1f"|format(p.probability_of_default * 100) }}%
+                </span>
+              </td>
+              <td>
+                {% if p.challenger_prediction == 1 %}
+                <span class="badge bg-danger" data-bs-toggle="tooltip" title="LightGBM Challenger: DEFAULT">Magas kockázat</span>
+                {% elif p.challenger_prediction == 0 %}
+                <span class="badge bg-success" data-bs-toggle="tooltip" title="LightGBM Challenger: NON-DEFAULT">Alacsony kockázat</span>
+                {% else %}-{% endif %}
+              </td>
+              <td>
+                {% if p.models_agree %}
+                <i class="bi bi-check-circle-fill text-success" data-bs-toggle="tooltip" title="Mindkét modell azonos döntést hozott — megbízható eredmény"></i>
+                {% elif p.models_agree is not none %}
+                <i class="bi bi-exclamation-circle-fill text-warning" data-bs-toggle="tooltip" title="A két modell eltérő döntést hozott — fokozottabb figyelmet igényel"></i>
+                {% else %}-{% endif %}
+              </td>
+              <td>
+                {% if p.sentiment_score is not none %}
+                <span data-bs-toggle="tooltip"
+                      title="Sentiment: {{ p.sentiment_score }} — {% if p.sentiment_score > 0 %}pozitív szöveg{% elif p.sentiment_score < 0 %}negatív / kockázati jelzők{% else %}semleges{% endif %}">
+                  {% if p.sentiment_score > 0 %}🟢{% elif p.sentiment_score < 0 %}🔴{% else %}⚪{% endif %}
+                  {{ "%.2f"|format(p.sentiment_score) }}
+                </span>
+                {% else %}-{% endif %}
+              </td>
+              <td>
+                {% if p.bias_detected %}
+                <span class="badge bg-warning text-dark"
+                      data-bs-toggle="tooltip"
+                      title="Magas kockázat jelzés, de a szöveges leírás pozitív — lehetséges szöveges elfogultság">
+                  <i class="bi bi-exclamation-triangle me-1"></i>Jelzett
+                </span>
+                {% else %}-{% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center text-muted py-4">
+              Még nincs predikció ennél az ügyfélnél.
+              <a href="{{ url_for('admin.customer_predict', customer_id=customer.id) }}">Indítson egyet!</a>
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el, { placement: 'top', trigger: 'hover focus' });
+  });
+</script>
+{% endblock %}

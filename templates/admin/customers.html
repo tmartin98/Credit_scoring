@@ -1,0 +1,46 @@
+{% extends "admin/base.html" %}
+{% block title %}Ügyfelek - Credit Scoring Admin{% endblock %}
+{% block page_title %}Ügyfelek{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <form class="d-flex gap-2" method="GET">
+      <input type="text" name="q" class="form-control form-control-sm" placeholder="Keresés (név, email)..." value="{{ search_q }}">
+      <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-muted small">{{ customers|length }} ügyfél</span>
+      <a href="{{ url_for('admin.create_customer') }}" class="btn btn-sm btn-primary">
+        <i class="bi bi-person-plus me-1"></i>Új ügyfél
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>Név</th><th>Email</th><th>Iparág</th><th>Jogi forma</th><th>Predikciók</th><th>Létrehozva</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td><a href="{{ url_for('admin.customer_detail', customer_id=c.id) }}"><strong>{{ c.name }}</strong></a></td>
+          <td>{{ c.email or '-' }}</td>
+          <td>{{ c.industry_code or '-' }}</td>
+          <td>{{ c.legal_entity_type or '-' }}</td>
+          <td><span class="badge bg-secondary">{{ c.predictions|length }}</span></td>
+          <td><small>{{ c.created_at.strftime('%Y-%m-%d') if c.created_at else '-' }}</small></td>
+          <td>
+            <a href="{{ url_for('admin.customer_detail', customer_id=c.id) }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">Nincs ügyfél az adatbázisban.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
